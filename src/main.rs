@@ -7,6 +7,7 @@ use image::imageops::FilterType;
 
 mod tabletop;
 mod input;
+mod dice;
 
 fn main() {
 	App::default()
@@ -18,6 +19,7 @@ fn main() {
 			InfiniteGridPlugin,
 			input::InputPlugin,
 			tabletop::TabletopPlugin,
+			dice::DicePlugin,
 		))
 		.insert_resource(MipmapGeneratorSettings {
 		  anisotropic_filtering: 16,

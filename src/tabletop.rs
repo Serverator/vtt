@@ -26,6 +26,9 @@ struct Moving {
     delta: Vec2,
 }
 
+#[derive(Component, Reflect, Clone, Copy, Default)]
+struct TopdownCamera;
+
 fn update_picking(
     mut picking_settings: ResMut<PickingPluginsSettings>,
     movable: Query<&Moving>,
@@ -44,7 +47,7 @@ fn init_move_tokens(
 
 fn move_tokens(
     mut moving_targets: Query<(&mut Transform, &mut Moving), With<Moving>>,
-    mut camera: Query<&mut Projection, With<Camera>>,
+    mut camera: Query<&mut Projection, With<TopdownCamera>>,
     mut mouse_motion: EventReader<InputMove>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     key_input: Res<ButtonInput<KeyCode>>,
@@ -75,7 +78,7 @@ fn move_tokens(
 }
 
 fn move_tabletop(
-    mut camera: Query<(&mut Transform, &Projection), With<Camera>>,
+    mut camera: Query<(&mut Transform, &Projection), With<TopdownCamera>>,
     input: Res<ButtonInput<MouseButton>>,
     mut mouse_motion: EventReader<InputMove>,
 ) {
@@ -106,7 +109,7 @@ impl Default for ZoomLevel {
 }
 
 fn zoom_tabletop(
-    mut camera: Query<(&mut Projection, &mut Transform), With<Camera>>,
+    mut camera: Query<(&mut Projection, &mut Transform), With<TopdownCamera>>,
     mut mouse_wheel: EventReader<MouseWheel>,
     egui: Query<&EguiContext>,
     cursor_pos: Res<CursorPosition>,
@@ -224,6 +227,7 @@ fn spawn_tabletop(
 
     commands.spawn((
         Name::new("Topdown camera"),
+        TopdownCamera,
         Camera3dBundle {
             transform: Transform::from_xyz(0.0, 0.0, 200.0),
             projection: Projection::Orthographic( OrthographicProjection {
