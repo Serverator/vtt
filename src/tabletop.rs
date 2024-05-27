@@ -176,13 +176,14 @@ fn spawn_tabletop(
 
     let bg_image = materials.add(StandardMaterial {
         unlit: true,
-        base_color_texture: Some(asset_server.load("bg.jpg")),
+        base_color_texture: Some(asset_server.load("map.png")),
         ..default()
     });
 
     let token_image = materials.add(StandardMaterial {
         unlit: true,
         base_color_texture: Some(asset_server.load("token.png")),
+        alpha_mode: AlphaMode::Blend,
         ..default()
     });
 
@@ -191,7 +192,7 @@ fn spawn_tabletop(
     commands.spawn((
         Name::new("Map background"),
         PbrBundle {
-            transform: Transform::from_scale(Vec3::new(32.0, 32.0, 1.0)),
+            transform: Transform::from_scale(Vec3::new(12.0, 12.0, 1.0)),
             mesh: quad.clone(),
             material: bg_image,
             ..default()
@@ -201,7 +202,7 @@ fn spawn_tabletop(
     commands.spawn((
         Name::new("Token"),
         PbrBundle {
-            transform: Transform::from_xyz(0.0, 0.0, 15.0).with_scale(Vec3::new(0.95, 0.95, 1.0)),
+            transform: Transform::from_xyz(0.5, 0.5, 15.0).with_scale(Vec3::new(0.95, 0.95, 1.0)),
             mesh: quad.clone(),
             material: token_image,
             ..default()
