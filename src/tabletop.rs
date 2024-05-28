@@ -135,14 +135,14 @@ fn zoom_tabletop(
     };
 
     let mut pos = cursor_pos.position;
-    pos.x =  pos.x - window_size.x / 2.0;
+    pos.x -= window_size.x / 2.0;
     pos.y = -pos.y + window_size.y / 2.0;
 
 
 
     let zoom_before = projection.scale;
     zoom_level.0 = f32::clamp(zoom_level.0 - mouse_wheel * 0.04, 0.0, 1.0);
-    projection.scale = f32::lerp(0.002, 0.1, zoom_level.powi(2));
+    projection.scale = <f32 as bevy::prelude::FloatExt>::lerp(0.002, 0.1, zoom_level.powi(2));
     let zoom_delta = zoom_before - projection.scale;
 
     // Fix camera moving when table loads
