@@ -94,16 +94,35 @@ fn display_window(
             match client_state.get() {
                 ly_client::NetworkingState::Disconnected => {
                     if ui.button("Connect").clicked() {
-                        let address = if connection_window.address_input.trim().is_empty() { 
-                            Some(std::net::SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), DEFAULT_PORT)))
+                        let address = if connection_window.address_input.trim().is_empty() {
+                            Some(std::net::SocketAddr::V4(SocketAddrV4::new(
+                                Ipv4Addr::new(127, 0, 0, 1),
+                                DEFAULT_PORT,
+                            )))
                         } else if connection_window.address_input.contains(':') {
-                            connection_window.address_input.trim().to_socket_addrs().ok().and_then(|mut x| x.find(|x| x.is_ipv4()))
+                            connection_window
+                                .address_input
+                                .trim()
+                                .to_socket_addrs()
+                                .ok()
+                                .and_then(|mut x| x.find(|x| x.is_ipv4()))
                         } else {
-                            format!("{}:{}", &connection_window.address_input.trim(), DEFAULT_PORT).to_socket_addrs().ok().and_then(|mut x| x.find(|x| x.is_ipv4()))
+                            format!(
+                                "{}:{}",
+                                &connection_window.address_input.trim(),
+                                DEFAULT_PORT
+                            )
+                            .to_socket_addrs()
+                            .ok()
+                            .and_then(|mut x| x.find(|x| x.is_ipv4()))
                         };
-    
+
                         if let Some(address) = address {
-                            if let ly_client::NetConfig::Netcode { auth: Authentication::Manual { server_addr, .. }, .. } = &mut client_config.net {
+                            if let ly_client::NetConfig::Netcode {
+                                auth: Authentication::Manual { server_addr, .. },
+                                ..
+                            } = &mut client_config.net
+                            {
                                 *server_addr = address;
                             }
 

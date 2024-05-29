@@ -1,4 +1,8 @@
-use std::{collections::VecDeque, net::{Ipv4Addr, SocketAddrV4, ToSocketAddrs},sync::Mutex};
+use std::{
+    collections::VecDeque,
+    net::{Ipv4Addr, SocketAddrV4, ToSocketAddrs},
+    sync::Mutex,
+};
 
 use bevy::{ecs::event::ManualEventReader, utils::HashMap};
 use client::{Authentication, ClientConfig, ConnectionManager};
@@ -156,21 +160,32 @@ struct ConnectCommand;
 
 impl Command for ConnectCommand {
     fn run_command(&mut self, args: &str, world: &mut World) {
-
-
-        let address = if args.trim().is_empty() { 
-            Some(std::net::SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), DEFAULT_PORT)))
+        let address = if args.trim().is_empty() {
+            Some(std::net::SocketAddr::V4(SocketAddrV4::new(
+                Ipv4Addr::new(127, 0, 0, 1),
+                DEFAULT_PORT,
+            )))
         } else if args.contains(':') {
-            args.trim().to_socket_addrs().ok().and_then(|mut x| x.find(|x| x.is_ipv4()))
+            args.trim()
+                .to_socket_addrs()
+                .ok()
+                .and_then(|mut x| x.find(|x| x.is_ipv4()))
         } else {
-            format!("{}:{}", &args.trim(), DEFAULT_PORT).to_socket_addrs().ok().and_then(|mut x| x.find(|x| x.is_ipv4()))
+            format!("{}:{}", &args.trim(), DEFAULT_PORT)
+                .to_socket_addrs()
+                .ok()
+                .and_then(|mut x| x.find(|x| x.is_ipv4()))
         };
 
         println!("{:?}", address);
 
         if let Some(address) = address {
             let mut client_config = world.resource_mut::<ClientConfig>();
-            if let client::NetConfig::Netcode { auth: Authentication::Manual { server_addr, .. }, .. } = &mut client_config.net {
+            if let client::NetConfig::Netcode {
+                auth: Authentication::Manual { server_addr, .. },
+                ..
+            } = &mut client_config.net
+            {
                 *server_addr = address;
             }
 
@@ -180,7 +195,6 @@ impl Command for ConnectCommand {
         } else {
             error!("Incorrect IP adress");
         }
-
     }
 
     fn stem(&self) -> &'static str {

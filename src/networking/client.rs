@@ -23,10 +23,9 @@ impl Plugin for ClientPlugin {
                 },
                 config: NetcodeConfig::default(),
                 io: IoConfig {
-                    transport: ClientTransport::UdpSocket(std::net::SocketAddr::V4(SocketAddrV4::new(
-                        Ipv4Addr::new(0, 0, 0, 0),
-                        0,
-                    ))),
+                    transport: ClientTransport::UdpSocket(std::net::SocketAddr::V4(
+                        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0),
+                    )),
                     ..default()
                 },
             },
