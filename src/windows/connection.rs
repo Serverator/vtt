@@ -64,7 +64,7 @@ fn display_window(
             .inner;
 
         if changed {
-            _ = connection.send_message::<UnorderedReliableChannel, Player>(&player);
+            _ = connection.send_message::<UnorderedReliable, Player>(&player);
         }
 
         ui.separator();

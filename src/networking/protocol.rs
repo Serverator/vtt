@@ -8,17 +8,36 @@ impl Plugin for ProtocolPlugin {
         app.add_message::<SendMessage>(ChannelDirection::ClientToServer);
         app.add_message::<ChatMessage>(ChannelDirection::ServerToClient);
         app.add_message::<Player>(ChannelDirection::ClientToServer);
+
         app.register_resource::<PlayerData>(ChannelDirection::ServerToClient);
         app.register_resource::<ConnectedClients>(ChannelDirection::ServerToClient);
-        app.add_channel::<UnorderedReliableChannel>(ChannelSettings {
+
+        app.register_component::<Cursor>(ChannelDirection::Bidirectional)
+            .add_interpolation(client::ComponentSyncMode::Full)
+            .add_linear_interpolation_fn();
+
+        app.register_component::<Owner>(ChannelDirection::ServerToClient)
+            .add_interpolation(client::ComponentSyncMode::Once);
+
+        app.register_type::<Cursor>();
+        app.register_type::<Replicated>();
+
+        app.add_channel::<UnorderedReliable>(ChannelSettings {
             mode: ChannelMode::UnorderedReliable(ReliableSettings::default()),
+            ..default()
+        });
+        app.add_channel::<SequencedReliable>(ChannelSettings {
+            mode: ChannelMode::SequencedReliable(ReliableSettings::default()),
             ..default()
         });
     }
 }
 
 #[derive(Channel)]
-pub struct UnorderedReliableChannel;
+pub struct UnorderedReliable;
+
+#[derive(Channel)]
+pub struct SequencedReliable;
 
 #[derive(Debug, Resource, Default, Serialize, Deserialize, Clone, Deref, DerefMut)]
 pub struct PlayerData(pub HashMap<u64, Player>);
@@ -30,6 +49,20 @@ pub struct ConnectedClients(pub HashSet<u64>);
 pub struct Player {
     pub name: String,
     pub color: [u8; 3],
+}
+
+#[derive(Component, Debug, Clone, Serialize, Deserialize, PartialEq, Deref, DerefMut)]
+pub struct Owner(pub u64);
+
+#[derive(Component, Clone, Copy, Reflect, Serialize, Deserialize, Debug, Default, PartialEq)]
+pub struct Cursor {
+    pub position: Vec2,
+}
+
+impl Linear for Cursor {
+    fn lerp(start: &Self, other: &Self, t: f32) -> Self {
+        Cursor { position: (1.0 - t) * start.position + t * other.position }
+    }
 }
 
 impl Default for Player {

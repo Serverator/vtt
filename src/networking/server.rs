@@ -31,13 +31,13 @@ impl Plugin for ServerPlugin {
 			.add_systems(Startup, replicate_resources)
             .add_systems(
                 Update,
-                recieve_message.run_if(in_state(NetworkingState::Started)),
+                (recieve_message, replicate_cursors).run_if(in_state(NetworkingState::Started)),
             );
     }
 }
 
 fn replicate_resources(mut commands: Commands) {
-    commands.replicate_resource::<PlayerData, UnorderedReliableChannel>(NetworkTarget::All)
+    commands.replicate_resource::<PlayerData, UnorderedReliable>(NetworkTarget::All)
 }
 
 fn recieve_message(
@@ -63,7 +63,7 @@ fn recieve_message(
         clients.insert(connected.client_id.to_bits());
 
         connection
-            .send_message_to_target::<UnorderedReliableChannel, _>(
+            .send_message_to_target::<UnorderedReliable, _>(
                 &chat_message,
                 NetworkTarget::All,
             )
@@ -79,7 +79,7 @@ fn recieve_message(
         let chat_message =
             ChatMessage::Message(message.context.to_bits(), message.message.0.clone());
         connection
-            .send_message_to_target::<UnorderedReliableChannel, _>(
+            .send_message_to_target::<UnorderedReliable, _>(
                 &chat_message,
                 NetworkTarget::All,
             )
@@ -90,12 +90,35 @@ fn recieve_message(
         info!("Player disconnected: {}", disconnected.client_id.to_bits());
         let chat_message = ChatMessage::Disconnected(disconnected.client_id.to_bits());
         connection
-            .send_message_to_target::<UnorderedReliableChannel, _>(
+            .send_message_to_target::<UnorderedReliable, _>(
                 &chat_message,
                 NetworkTarget::All,
             )
             .unwrap();
 
         clients.remove(&disconnected.client_id.to_bits());
+    }
+}
+
+fn replicate_cursors(
+    mut commands: Commands,
+    cursors: Query<(Entity, &Replicated), (With<Cursor>, Added<Replicated>)>,
+) {
+    for (entity, replicated) in cursors.iter() {
+        let mut entity = commands.entity(entity);
+        let client_id = replicated.client_id();
+
+        entity.insert((server::Replicate {
+            target: ReplicationTarget {
+                target: NetworkTarget::AllExceptSingle(client_id),
+            },
+            sync: SyncTarget {
+               interpolation: NetworkTarget::None,
+               prediction: NetworkTarget::None,
+            },
+            ..default()
+        },
+            Owner(client_id.to_bits())
+        ));
     }
 }

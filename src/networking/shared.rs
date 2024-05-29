@@ -2,7 +2,7 @@ use crate::prelude::*;
 use lightyear::prelude::*;
 use std::time::Duration;
 
-pub const TICKRATE: f64 = 64.0;
+pub const TICKRATE: f64 = 240.0;
 pub const DEFAULT_PORT: u16 = 27007;
 
 pub struct SharedPlugin;

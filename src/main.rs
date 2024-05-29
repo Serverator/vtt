@@ -31,6 +31,7 @@ fn main() {
             tabletop::TabletopPlugin,
             dice::DicePlugin,
             windows::WindowPlugin,
+            bevy_egui::EguiPlugin,
         ))
         .insert_resource(MipmapGeneratorSettings {
             anisotropic_filtering: 16,

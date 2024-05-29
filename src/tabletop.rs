@@ -40,7 +40,7 @@ struct Moving {
 }
 
 #[derive(Component, Reflect, Clone, Copy, Default)]
-struct TopdownCamera;
+pub struct TopdownCamera;
 
 fn update_picking(
     mut picking_settings: ResMut<PickingPluginsSettings>,

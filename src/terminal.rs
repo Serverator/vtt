@@ -123,7 +123,7 @@ impl Command for SendCommand {
     fn run_command(&mut self, args: &str, world: &mut World) {
         let mut connection = world.get_resource_mut::<ConnectionManager>().unwrap();
         connection
-            .send_message::<UnorderedReliableChannel, SendMessage>(&SendMessage(String::from(args)))
+            .send_message::<UnorderedReliable, SendMessage>(&SendMessage(String::from(args)))
             .unwrap();
     }
 

@@ -110,7 +110,7 @@ fn display_window(
                         || button_response.clicked())
                 {
                     let message = SendMessage(String::from(chat_window.input.trim()));
-                    _ = connection.send_message::<UnorderedReliableChannel, _>(&message);
+                    _ = connection.send_message::<UnorderedReliable, _>(&message);
                     chat_window.input.clear();
                 }
             });
