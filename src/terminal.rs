@@ -177,8 +177,6 @@ impl Command for ConnectCommand {
                 .and_then(|mut x| x.find(|x| x.is_ipv4()))
         };
 
-        println!("{:?}", address);
-
         if let Some(address) = address {
             let mut client_config = world.resource_mut::<ClientConfig>();
             if let client::NetConfig::Netcode {

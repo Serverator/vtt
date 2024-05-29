@@ -2,7 +2,6 @@
 
 use bevy::{log::LogPlugin, prelude::*};
 use bevy_infinite_grid::InfiniteGridPlugin;
-use bevy_inspector_egui::quick::*;
 use bevy_mod_mipmap_generator::{generate_mipmaps, MipmapGeneratorPlugin, MipmapGeneratorSettings};
 use bevy_mod_picking::DefaultPickingPlugins;
 use image::imageops::FilterType;
@@ -12,6 +11,7 @@ mod input;
 mod networking;
 mod tabletop;
 mod terminal;
+mod windows;
 
 fn main() {
     let mut args = std::env::args();
@@ -30,7 +30,14 @@ fn main() {
             input::InputPlugin,
             tabletop::TabletopPlugin,
             dice::DicePlugin,
-        ));
+            windows::WindowPlugin,
+        ))
+        .insert_resource(MipmapGeneratorSettings {
+            anisotropic_filtering: 16,
+            filter_type: FilterType::Triangle,
+            minimum_mip_resolution: 64,
+        })
+        .add_systems(Update, generate_mipmaps::<StandardMaterial>);
 
         #[cfg(debug_assertions)]
         app.add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new());
@@ -44,31 +51,15 @@ fn main() {
     ));
 
     app.run();
-
-    App::default()
-        .add_plugins((
-            DefaultPlugins,
-            MipmapGeneratorPlugin,
-            WorldInspectorPlugin::default(),
-            DefaultPickingPlugins,
-            InfiniteGridPlugin,
-            input::InputPlugin,
-            tabletop::TabletopPlugin,
-            dice::DicePlugin,
-        ))
-        .insert_resource(MipmapGeneratorSettings {
-            anisotropic_filtering: 16,
-            filter_type: FilterType::Triangle,
-            minimum_mip_resolution: 64,
-        })
-        .add_systems(Update, generate_mipmaps::<StandardMaterial>)
-        .run();
 }
 
 pub mod prelude {
-    pub use crate::networking::protocol::*;
     pub use bevy::prelude::FloatExt;
     pub use bevy::prelude::*;
+    pub use bevy_egui::egui;
     pub use bevy_mod_picking::prelude::*;
     pub use serde::{Deserialize, Serialize};
+
+    pub use crate::networking::protocol::*;
+    pub use crate::networking::shared::DEFAULT_PORT;
 }

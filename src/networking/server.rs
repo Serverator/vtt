@@ -26,7 +26,8 @@ impl Plugin for ServerPlugin {
         };
 
         app.add_plugins(ServerPlugins::new(config))
-            .init_resource::<PlayerList>()
+            .init_resource::<PlayerData>()
+            .init_resource::<ConnectedClients>()
             .add_systems(
                 Update,
                 recieve_message.run_if(in_state(NetworkingState::Started)),
@@ -39,7 +40,8 @@ fn recieve_message(
     mut player_updated: EventReader<MessageEvent<Player>>,
     mut connected: EventReader<ConnectEvent>,
     mut disconnected: EventReader<DisconnectEvent>,
-    mut player_list: ResMut<PlayerList>,
+    mut player_list: ResMut<PlayerData>,
+    mut clients: ResMut<ConnectedClients>,
     mut connection: ResMut<ConnectionManager>,
 ) {
     for player_updated in player_updated.read() {
@@ -47,19 +49,14 @@ fn recieve_message(
             player_updated.context.to_bits(),
             player_updated.message.clone(),
         );
-        println!("{:?}", player_updated.message);
     }
 
     for connected in connected.read() {
         info!("Player connected: {}", connected.client_id.to_bits());
         let chat_message = ChatMessage::Connected(connected.client_id.to_bits());
-        player_list
-            .0
-            .entry(connected.client_id.to_bits())
-            .or_insert(Player {
-                name: String::from("Random Joe"),
-                color: [255; 3],
-            });
+
+        clients.insert(connected.client_id.to_bits());
+
         connection
             .send_message_to_target::<UnorderedReliableChannel, _>(
                 &chat_message,
@@ -79,13 +76,13 @@ fn recieve_message(
         connection
             .send_message_to_target::<UnorderedReliableChannel, _>(
                 &chat_message,
-                NetworkTarget::AllExceptSingle(message.context),
+                NetworkTarget::All,
             )
             .unwrap();
     }
 
     for disconnected in disconnected.read() {
-        info!("Player connected: {}", disconnected.client_id.to_bits());
+        info!("Player disconnected: {}", disconnected.client_id.to_bits());
         let chat_message = ChatMessage::Disconnected(disconnected.client_id.to_bits());
         connection
             .send_message_to_target::<UnorderedReliableChannel, _>(
@@ -93,5 +90,7 @@ fn recieve_message(
                 NetworkTarget::All,
             )
             .unwrap();
+
+        clients.remove(&disconnected.client_id.to_bits());
     }
 }
