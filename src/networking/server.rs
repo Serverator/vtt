@@ -28,11 +28,16 @@ impl Plugin for ServerPlugin {
         app.add_plugins(ServerPlugins::new(config))
             .init_resource::<PlayerData>()
             .init_resource::<ConnectedClients>()
+			.add_systems(Startup, replicate_resources)
             .add_systems(
                 Update,
                 recieve_message.run_if(in_state(NetworkingState::Started)),
             );
     }
+}
+
+fn replicate_resources(mut commands: Commands) {
+    commands.replicate_resource::<PlayerData, UnorderedReliableChannel>(NetworkTarget::All)
 }
 
 fn recieve_message(
