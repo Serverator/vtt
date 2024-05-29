@@ -4,16 +4,29 @@ use bevy_infinite_grid::{InfiniteGridBundle, InfiniteGridSettings};
 use picking_core::PickingPluginsSettings;
 use pointer::InputMove;
 
-use crate::{input::{CursorPosition, OverUI}, prelude::*};
+use crate::{
+    input::{CursorPosition, OverUI},
+    prelude::*,
+};
 
 pub struct TabletopPlugin;
 impl Plugin for TabletopPlugin {
     fn build(&self, app: &mut App) {
-        app .insert_resource(Msaa::Sample4)
+        app.insert_resource(Msaa::Sample4)
             .register_type::<Moving>()
             .add_systems(Startup, spawn_tabletop)
-            .add_systems(PreUpdate, update_picking.after(crate::input::update_over_ui))
-            .add_systems(Update, ((init_move_tokens, move_tokens).chain(), move_tabletop, zoom_tabletop));
+            .add_systems(
+                PreUpdate,
+                update_picking.after(crate::input::update_over_ui),
+            )
+            .add_systems(
+                Update,
+                (
+                    (init_move_tokens, move_tokens).chain(),
+                    move_tabletop,
+                    zoom_tabletop,
+                ),
+            );
     }
 }
 
@@ -37,9 +50,7 @@ fn update_picking(
     picking_settings.is_enabled = !**over_ui || !movable.is_empty();
 }
 
-fn init_move_tokens(
-    mut moving_targets: Query<(&Transform, &mut Moving), Added<Moving>>,
-) {
+fn init_move_tokens(mut moving_targets: Query<(&Transform, &mut Moving), Added<Moving>>) {
     for (transform, mut movement) in moving_targets.iter_mut() {
         movement.start_pos = transform.translation.xy();
     }
@@ -52,9 +63,7 @@ fn move_tokens(
     mouse_input: Res<ButtonInput<MouseButton>>,
     key_input: Res<ButtonInput<KeyCode>>,
 ) {
-    let mouse_motion = mouse_motion.read().fold(Vec2::ZERO, |acc, x| {
-         acc + x.delta
-    });
+    let mouse_motion = mouse_motion.read().fold(Vec2::ZERO, |acc, x| acc + x.delta);
 
     if mouse_input.pressed(MouseButton::Middle) {
         return;
@@ -82,15 +91,13 @@ fn move_tabletop(
     input: Res<ButtonInput<MouseButton>>,
     mut mouse_motion: EventReader<InputMove>,
 ) {
-    let mouse_motion = mouse_motion.read().fold(Vec2::ZERO, |acc, x| {
-         acc + x.delta
-    });
+    let mouse_motion = mouse_motion.read().fold(Vec2::ZERO, |acc, x| acc + x.delta);
 
     if !input.pressed(MouseButton::Middle) {
         return;
     }
 
-    let  (mut transform, projection) = camera.single_mut();
+    let (mut transform, projection) = camera.single_mut();
 
     let Projection::Orthographic(projection) = projection else {
         return;
@@ -103,9 +110,9 @@ fn move_tabletop(
 #[derive(Clone, Copy, Deref, DerefMut)]
 pub struct ZoomLevel(f32);
 impl Default for ZoomLevel {
-	fn default() -> Self {
-		Self(0.5)
-	}
+    fn default() -> Self {
+        Self(0.5)
+    }
 }
 
 fn zoom_tabletop(
@@ -118,15 +125,16 @@ fn zoom_tabletop(
     mut skip_first: Local<bool>,
 ) {
     let window = window.single();
-    let window_size = Vec2::new(window.resolution.physical_width() as f32, window.resolution.physical_height() as f32);
+    let window_size = Vec2::new(
+        window.resolution.physical_width() as f32,
+        window.resolution.physical_height() as f32,
+    );
 
     if egui.single().get().is_pointer_over_area() {
         return;
     }
 
-    let mouse_wheel = mouse_wheel.read().fold(0.0, |acc, wheel| {
-        acc + wheel.y
-    });
+    let mouse_wheel = mouse_wheel.read().fold(0.0, |acc, wheel| acc + wheel.y);
 
     let (mut projection, mut transform) = camera.single_mut();
 
@@ -137,8 +145,6 @@ fn zoom_tabletop(
     let mut pos = cursor_pos.position;
     pos.x -= window_size.x / 2.0;
     pos.y = -pos.y + window_size.y / 2.0;
-
-
 
     let zoom_before = projection.scale;
     zoom_level.0 = f32::clamp(zoom_level.0 - mouse_wheel * 0.04, 0.0, 1.0);
@@ -152,7 +158,6 @@ fn zoom_tabletop(
     }
 
     transform.translation += pos.extend(0.0) * zoom_delta;
-
 }
 
 fn spawn_tabletop(
@@ -161,21 +166,21 @@ fn spawn_tabletop(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-   	commands.spawn((
-		Name::new("Grid"),
-		InfiniteGridBundle {
-			settings: InfiniteGridSettings {
-			    x_axis_color: Color::BLACK,
-				z_axis_color: Color::BLACK,
-				major_line_color: Color::BLACK,
-				minor_line_color: Color::BLACK,
-				..default()
-			},
-			transform: Transform::from_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
-			     .with_translation(Vec3::new(0.0, 0.0, 10.0)),
-			..default()
-		},
-	));
+    commands.spawn((
+        Name::new("Grid"),
+        InfiniteGridBundle {
+            settings: InfiniteGridSettings {
+                x_axis_color: Color::BLACK,
+                z_axis_color: Color::BLACK,
+                major_line_color: Color::BLACK,
+                minor_line_color: Color::BLACK,
+                ..default()
+            },
+            transform: Transform::from_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
+                .with_translation(Vec3::new(0.0, 0.0, 10.0)),
+            ..default()
+        },
+    ));
 
     let bg_image = materials.add(StandardMaterial {
         unlit: true,
@@ -230,7 +235,7 @@ fn spawn_tabletop(
         TopdownCamera,
         Camera3dBundle {
             transform: Transform::from_xyz(0.0, 0.0, 200.0),
-            projection: Projection::Orthographic( OrthographicProjection {
+            projection: Projection::Orthographic(OrthographicProjection {
                 scale: 0.027,
                 ..default()
             }),
