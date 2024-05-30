@@ -26,8 +26,8 @@ impl Plugin for ProtocolPlugin {
             mode: ChannelMode::UnorderedReliable(ReliableSettings::default()),
             ..default()
         });
-        app.add_channel::<SequencedReliable>(ChannelSettings {
-            mode: ChannelMode::SequencedReliable(ReliableSettings::default()),
+        app.add_channel::<SequencedUnreliable>(ChannelSettings {
+            mode: ChannelMode::SequencedUnreliable,
             ..default()
         });
     }
@@ -37,7 +37,7 @@ impl Plugin for ProtocolPlugin {
 pub struct UnorderedReliable;
 
 #[derive(Channel)]
-pub struct SequencedReliable;
+pub struct SequencedUnreliable;
 
 #[derive(Debug, Resource, Default, Serialize, Deserialize, Clone, Deref, DerefMut)]
 pub struct PlayerData(pub HashMap<u64, Player>);

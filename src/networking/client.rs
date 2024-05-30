@@ -1,4 +1,4 @@
-use std::{default, net::{Ipv4Addr, SocketAddrV4}};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use crate::{input::CursorPosition, prelude::*, tabletop::TopdownCamera};
 use client::*;
@@ -7,7 +7,9 @@ use rand::RngCore;
 
 use super::shared::DEFAULT_PORT;
 
-pub struct ClientPlugin;
+pub struct ClientPlugin {
+    pub headless: bool,
+}
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         let config = ClientConfig {
@@ -23,9 +25,15 @@ impl Plugin for ClientPlugin {
                 },
                 config: NetcodeConfig::default(),
                 io: IoConfig {
-                    transport: ClientTransport::UdpSocket(std::net::SocketAddr::V4(
-                        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0),
-                    )),
+                    transport: ClientTransport::WebTransportClient {
+                        client_addr: std::net::SocketAddr::V4(
+                            SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0),
+                        ),
+                        server_addr: std::net::SocketAddr::V4(SocketAddrV4::new(
+                            Ipv4Addr::new(127, 0, 0, 1),
+                            DEFAULT_PORT,
+                        )),
+                    },
                     ..default()
                 },
             },
@@ -37,13 +45,15 @@ impl Plugin for ClientPlugin {
 
         //app.add_systems(Startup, connect);
 
-        app.add_systems(Startup, spawn_local_cursor)
+        if !self.headless {
+            app.add_systems(Startup, spawn_local_cursor)
             .add_systems(Update, (
                 update_local_cursor_position,
                 init_replicated_cursors,
                 update_replicated_cursor_position,
                 update_replicated_cursor_color
             ).run_if(in_state(NetworkingState::Connected)));
+        }
 
         app.add_plugins(ClientPlugins::new(config));
         app.insert_resource(Player {

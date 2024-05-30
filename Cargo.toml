@@ -24,6 +24,6 @@ bevy_infinite_grid = "0.12.0"
 bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator.git", version = "0.1.0" }
 bevy_mod_picking = "0.18.2"
 image =  { version = "0.24.9", default-features = false }
-lightyear = { git = "https://github.com/cBournhonesque/lightyear.git" }
+lightyear = { git = "https://github.com/cBournhonesque/lightyear.git", features = ["webtransport"] }
 rand = "0.8.5"
 serde = "1.0.203"

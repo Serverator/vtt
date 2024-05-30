@@ -11,7 +11,10 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         let io = IoConfig {
-            transport: ServerTransport::UdpSocket(SERVER_ADDR),
+            transport: ServerTransport::WebTransportServer { 
+                server_addr: SERVER_ADDR,
+                certificate: Identity::self_signed(["localhost"]).unwrap()
+            },
             ..default()
         };
 

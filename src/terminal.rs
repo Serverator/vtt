@@ -5,7 +5,7 @@ use std::{
 };
 
 use bevy::{ecs::event::ManualEventReader, utils::HashMap};
-use client::{Authentication, ClientConfig, ConnectionManager};
+use client::{Authentication, ClientConfig, ClientTransport, ConnectionManager};
 use lightyear::prelude::*;
 
 use crate::{networking::shared::DEFAULT_PORT, prelude::*};
@@ -181,10 +181,17 @@ impl Command for ConnectCommand {
             let mut client_config = world.resource_mut::<ClientConfig>();
             if let client::NetConfig::Netcode {
                 auth: Authentication::Manual { server_addr, .. },
+                io: client::IoConfig {
+                    transport: ClientTransport::WebTransportClient { 
+                        server_addr: web_server_addr ,
+                        ..
+                    }, ..
+                },
                 ..
             } = &mut client_config.net
             {
                 *server_addr = address;
+                *web_server_addr = address;
             }
 
             world.insert_resource(NextState::<client::NetworkingState>(Some(

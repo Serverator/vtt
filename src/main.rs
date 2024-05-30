@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 
 use bevy::{log::LogPlugin, prelude::*};
 use bevy_infinite_grid::InfiniteGridPlugin;

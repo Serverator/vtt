@@ -14,7 +14,7 @@ impl Plugin for NetworkingPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             shared::SharedPlugin,
-            client::ClientPlugin,
+            client::ClientPlugin { headless: self.headless },
             server::ServerPlugin,
             protocol::ProtocolPlugin,
         ));
