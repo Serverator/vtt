@@ -27,3 +27,4 @@ image =  { version = "0.24.9", default-features = false }
 lightyear = { git = "https://github.com/cBournhonesque/lightyear.git", features = ["webtransport"] }
 rand = "0.8.5"
 serde = "1.0.203"
+uuid = "1.8.0"

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::{ecs::entity::MapEntities, utils::{HashMap, HashSet}};
 use lightyear::prelude::*;
 
 pub struct ProtocolPlugin;
@@ -7,25 +7,32 @@ impl Plugin for ProtocolPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<SendMessage>(ChannelDirection::ClientToServer);
         app.add_message::<ChatMessage>(ChannelDirection::ServerToClient);
+        app.add_message::<DeselectMessage>(ChannelDirection::ServerToClient);
         app.add_message::<Player>(ChannelDirection::ClientToServer);
 
         app.register_resource::<PlayerData>(ChannelDirection::ServerToClient);
         app.register_resource::<ConnectedClients>(ChannelDirection::ServerToClient);
 
-        app.register_component::<Cursor>(ChannelDirection::Bidirectional)
-            .add_interpolation(client::ComponentSyncMode::Full)
-            .add_linear_interpolation_fn();
+        app.register_component::<Cursor>(ChannelDirection::Bidirectional);
+        app.register_component::<Owner>(ChannelDirection::ServerToClient);
+        app.register_component::<Token>(ChannelDirection::ServerToClient);
 
-        app.register_component::<Owner>(ChannelDirection::ServerToClient)
-            .add_interpolation(client::ComponentSyncMode::Once);
-
+        app.register_type::<Token>();
         app.register_type::<Cursor>();
         app.register_type::<Replicated>();
+        app.register_type::<Owner>();
+        app.register_type::<DeselectMessage>()
+           .add_map_entities::<DeselectMessage>();
+
+        app.init_resource::<SharedAssets<Mesh>>();
+        app.init_resource::<SharedAssets<StandardMaterial>>();
+        app.init_resource::<SharedAssets<Image>>();
 
         app.add_channel::<UnorderedReliable>(ChannelSettings {
             mode: ChannelMode::UnorderedReliable(ReliableSettings::default()),
             ..default()
         });
+
         app.add_channel::<SequencedUnreliable>(ChannelSettings {
             mode: ChannelMode::SequencedUnreliable,
             ..default()
@@ -39,6 +46,44 @@ pub struct UnorderedReliable;
 #[derive(Channel)]
 pub struct SequencedUnreliable;
 
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Token {
+    pub position: Vec2,
+    pub layer: f32,
+}
+
+pub enum SharedAssetId {
+    Uuid(uuid::Uuid),
+    Name(String),
+}
+
+#[derive(Resource)]
+pub struct SharedAssets<T: Asset> {
+    pub map: HashMap<SharedAssetId, Handle<T>>
+}
+
+// Derive macro for some reason refuses to impl Default
+impl<T: Asset> Default for SharedAssets<T> {
+    fn default() -> Self {
+        Self { map: HashMap::default() }
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SharedMesh {
+    pub position: Vec2,
+    pub layer: f32,
+}
+
+pub struct SharedMaterial {
+
+}
+
+pub struct SharedTexture {
+
+}
+
+
 #[derive(Debug, Resource, Default, Serialize, Deserialize, Clone, Deref, DerefMut)]
 pub struct PlayerData(pub HashMap<u64, Player>);
 
@@ -51,12 +96,27 @@ pub struct Player {
     pub color: [u8; 3],
 }
 
-#[derive(Component, Debug, Clone, Serialize, Deserialize, PartialEq, Deref, DerefMut)]
+#[derive(Component, Debug, Clone, Reflect, Serialize, Deserialize, PartialEq, Deref, DerefMut)]
 pub struct Owner(pub u64);
 
 #[derive(Component, Clone, Copy, Reflect, Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct Cursor {
     pub position: Vec2,
+}
+
+#[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
+pub enum DeselectMessage {
+    Everything,
+    Entity(Entity),
+}
+
+impl MapEntities for DeselectMessage {
+    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+        match self {
+            DeselectMessage::Entity(entity) => *entity = entity_mapper.map_entity(*entity),
+            DeselectMessage::Everything => (),
+        }
+    }
 }
 
 impl Linear for Cursor {

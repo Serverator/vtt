@@ -50,6 +50,7 @@ impl Plugin for ClientPlugin {
             .add_systems(Update, (
                 update_local_cursor_position,
                 init_replicated_cursors,
+                update_token_position,
                 update_replicated_cursor_position,
                 update_replicated_cursor_color
             ).run_if(in_state(NetworkingState::Connected)));
@@ -105,21 +106,33 @@ fn update_local_cursor_position(
     let mut local_cursor = local_cursor.single_mut();
 
     if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_pos.position) {
-        local_cursor.position = position + Vec2::new(0.25, -0.25);
+        let desired_pos = position + Vec2::new(0.25, -0.25);
+        local_cursor.position = desired_pos;
     }
 }
 
+fn update_token_position (
+    mut tokens: Query<(&mut Transform, &Token), Or<(With<Replicated>, With<Interpolated>)>>,
+    time: Res<Time>,
+) {
+    for (mut transform, token) in tokens.iter_mut() {
+        transform.translation = Vec2::lerp(transform.translation.xy(), token.position, (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32).extend(token.layer);
+    }
+}
+
+
 fn update_replicated_cursor_position(
-    mut cursors: Query<(&mut Transform, &Cursor), (With<Replicated>, Changed<Cursor>)>,
+    mut cursors: Query<(&mut Transform, &Cursor), Or<(With<Replicated>, With<Interpolated>)>>,
+    time: Res<Time>,
 ) {
     for (mut transform, cursor) in cursors.iter_mut() {
-        transform.translation = cursor.position.extend(50.0);
+        transform.translation = Vec2::lerp(transform.translation.xy(), cursor.position, (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32).extend(50.0);
     }
 }
 
 fn init_replicated_cursors(
     mut commands: Commands,
-    cursors: Query<(Entity, &Owner, &Cursor), Added<Replicated>>,
+    cursors: Query<(Entity, &Owner, &Cursor), Or<(Added<Replicated>, Added<Interpolated>)>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
@@ -146,14 +159,15 @@ fn init_replicated_cursors(
 
         let mut entity = commands.entity(entity);
 
-        entity.insert(
+        entity.insert((
+            Name::new(format!("Cursor (ID:{})", owner.0)),
             PbrBundle {
                 material,
                 mesh: quad.clone(),
                 transform: Transform::from_translation(cursor.position.extend(50.0)),
                 ..default()
             },
-        );
+        ));
     }
 }
 

@@ -11,7 +11,7 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         let io = IoConfig {
-            transport: ServerTransport::WebTransportServer { 
+            transport: ServerTransport::WebTransportServer {
                 server_addr: SERVER_ADDR,
                 certificate: Identity::self_signed(["localhost"]).unwrap()
             },
@@ -34,7 +34,7 @@ impl Plugin for ServerPlugin {
 			.add_systems(Startup, replicate_resources)
             .add_systems(
                 Update,
-                (recieve_message, replicate_cursors).run_if(in_state(NetworkingState::Started)),
+                (recieve_message, replicate_cursors, despawn_cursors).run_if(in_state(NetworkingState::Started)),
             );
     }
 }
@@ -108,6 +108,9 @@ fn replicate_cursors(
     cursors: Query<(Entity, &Replicated), (With<Cursor>, Added<Replicated>)>,
 ) {
     for (entity, replicated) in cursors.iter() {
+
+        println!("New cursor by {:?} pog", replicated.client_id());
+
         let mut entity = commands.entity(entity);
         let client_id = replicated.client_id();
 
@@ -115,13 +118,23 @@ fn replicate_cursors(
             target: ReplicationTarget {
                 target: NetworkTarget::AllExceptSingle(client_id),
             },
-            sync: SyncTarget {
-               interpolation: NetworkTarget::None,
-               prediction: NetworkTarget::None,
-            },
             ..default()
         },
             Owner(client_id.to_bits())
         ));
+    }
+}
+
+fn despawn_cursors(
+    mut commands: Commands,
+    mut disconnected: EventReader<DisconnectEvent>,
+    cursors: Query<(Entity, &Replicated), With<Cursor>>,
+) {
+    for disconnect in disconnected.read() {
+        let client_id = disconnect.client_id;
+
+        if let Some((cursor, _)) = cursors.iter().find(|x| x.1.client_id() == client_id) {
+            commands.entity(cursor).despawn();
+        }
     }
 }
