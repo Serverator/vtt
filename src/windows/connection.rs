@@ -104,11 +104,16 @@ fn display_window(
                         if let Some(address) = address {
                             if let client::NetConfig::Netcode {
                                 auth: Authentication::Manual { server_addr, .. },
-                                io: client::IoConfig {
-                                    transport: client::ClientTransport::WebTransportClient { 
-                                        server_addr: web_server_addr, ..
-                                    }, ..
-                                }, ..
+                                io:
+                                    client::IoConfig {
+                                        transport:
+                                            client::ClientTransport::WebTransportClient {
+                                                server_addr: web_server_addr,
+                                                ..
+                                            },
+                                        ..
+                                    },
+                                ..
                             } = &mut client_config.net
                             {
                                 *server_addr = address;

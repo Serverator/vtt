@@ -1,7 +1,7 @@
 use bevy::{input::mouse::MouseWheel, window::PrimaryWindow};
 use bevy_egui::EguiContext;
 use bevy_infinite_grid::{InfiniteGridBundle, InfiniteGridSettings};
-use lightyear::{client::events::MessageEvent, prelude::server::Replicate, shared::{replication::components::ReplicationTarget, network_target::NetworkTarget}, sets::MainSet}};
+use lightyear::prelude::*;
 use picking_core::PickingPluginsSettings;
 use pointer::InputMove;
 
@@ -15,12 +15,17 @@ impl Plugin for TabletopPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Msaa::Sample4)
             .register_type::<Moving>()
-            .add_systems(OnEnter(lightyear::prelude::server::NetworkingState::Started), spawn_tokens.run_if(run_once()))
             .add_systems(
-                PreUpdate, (
+                OnEnter(lightyear::prelude::server::NetworkingState::Started),
+                spawn_tokens.run_if(run_once()),
+            )
+            .add_systems(
+                PreUpdate,
+                (
                     drop_moving_tokens.after(MainSet::EmitEvents),
                     update_picking.after(crate::input::update_over_ui),
-            ))
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -45,7 +50,7 @@ struct Moving {
 fn drop_moving_tokens(
     mut commands: Commands,
     tokens: Query<Entity, With<Moving>>,
-    mut deselect_events: EventReader<MessageEvent<DeselectMessage>>,
+    mut deselect_events: EventReader<client::MessageEvent<DeselectMessage>>,
 ) {
     for event in deselect_events.read() {
         match event.message {
@@ -53,10 +58,10 @@ fn drop_moving_tokens(
                 for entity in tokens.iter() {
                     commands.entity(entity).remove::<Moving>();
                 }
-            },
+            }
             DeselectMessage::Entity(entity) => {
-                 commands.entity(entity).remove::<Moving>();
-            },
+                commands.entity(entity).remove::<Moving>();
+            }
         }
     }
 }
@@ -189,55 +194,53 @@ fn spawn_tokens(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let bg_image = materials.add(StandardMaterial {
-           unlit: true,
-           base_color_texture: Some(asset_server.load("map.png")),
-           ..default()
-       });
+        unlit: true,
+        base_color_texture: Some(asset_server.load("map.png")),
+        ..default()
+    });
 
-       let token_image = materials.add(StandardMaterial {
-           unlit: true,
-           base_color_texture: Some(asset_server.load("token.png")),
-           alpha_mode: AlphaMode::Blend,
-           ..default()
-       });
+    let token_image = materials.add(StandardMaterial {
+        unlit: true,
+        base_color_texture: Some(asset_server.load("token.png")),
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
 
-       let quad = meshes.add(Mesh::from(Rectangle::new(1.0, 1.0)));
+    let quad = meshes.add(Mesh::from(Rectangle::new(1.0, 1.0)));
 
-       commands.spawn((
-           Name::new("Map background"),
-           PbrBundle {
-               transform: Transform::from_scale(Vec3::new(12.0, 12.0, 1.0)),
-               mesh: quad.clone(),
-               material: bg_image,
-               ..default()
-           },
-       ));
+    commands.spawn((
+        Name::new("Map background"),
+        PbrBundle {
+            transform: Transform::from_scale(Vec3::new(12.0, 12.0, 1.0)),
+            mesh: quad.clone(),
+            material: bg_image,
+            ..default()
+        },
+    ));
 
-       let mut token = commands.spawn_empty();
-       token.insert((
-           Name::new("Token"),
-           PbrBundle {
-               transform: Transform::from_scale(Vec3::new(0.95, 0.95, 1.0)),
-               mesh: quad.clone(),
-               material: token_image,
-               ..default()
-           },
-           Token {
-               position: Vec2::new(0.5, 0.5),
-               layer: 15.0,
-           },
-           Replicate {
-               target: ReplicationTarget {
-                   target: NetworkTarget::All
-               },
-               ..default()
-           }
-       ));
+    let mut token = commands.spawn_empty();
+    token.insert((
+        Name::new("Token"),
+        PbrBundle {
+            transform: Transform::from_scale(Vec3::new(0.95, 0.95, 1.0)),
+            mesh: quad.clone(),
+            material: token_image,
+            ..default()
+        },
+        Token {
+            position: Vec2::new(0.5, 0.5),
+            layer: 15.0,
+        },
+        server::Replicate {
+            target: ReplicationTarget {
+                target: NetworkTarget::All,
+            },
+            ..default()
+        },
+    ));
 }
 
-fn spawn_tabletop(
-    mut commands: Commands,
-) {
+fn spawn_tabletop(mut commands: Commands) {
     commands.spawn((
         Name::new("Grid"),
         InfiniteGridBundle {

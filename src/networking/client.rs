@@ -26,9 +26,10 @@ impl Plugin for ClientPlugin {
                 config: NetcodeConfig::default(),
                 io: IoConfig {
                     transport: ClientTransport::WebTransportClient {
-                        client_addr: std::net::SocketAddr::V4(
-                            SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0),
-                        ),
+                        client_addr: std::net::SocketAddr::V4(SocketAddrV4::new(
+                            Ipv4Addr::new(0, 0, 0, 0),
+                            0,
+                        )),
                         server_addr: std::net::SocketAddr::V4(SocketAddrV4::new(
                             Ipv4Addr::new(127, 0, 0, 1),
                             DEFAULT_PORT,
@@ -46,14 +47,17 @@ impl Plugin for ClientPlugin {
         //app.add_systems(Startup, connect);
 
         if !self.headless {
-            app.add_systems(Startup, spawn_local_cursor)
-            .add_systems(Update, (
-                update_local_cursor_position,
-                init_replicated_cursors,
-                update_token_position,
-                update_replicated_cursor_position,
-                update_replicated_cursor_color
-            ).run_if(in_state(NetworkingState::Connected)));
+            app.add_systems(Startup, spawn_local_cursor).add_systems(
+                Update,
+                (
+                    update_local_cursor_position,
+                    init_replicated_cursors,
+                    update_token_position,
+                    update_replicated_cursor_position,
+                    update_replicated_cursor_color,
+                )
+                    .run_if(in_state(NetworkingState::Connected)),
+            );
         }
 
         app.add_plugins(ClientPlugins::new(config));
@@ -89,7 +93,14 @@ fn spawn_local_cursor(mut commands: Commands) {
 }
 
 fn update_local_cursor_position(
-    mut local_cursor: Query<&mut Cursor, (Without<Replicated>, Without<Confirmed>, Without<Interpolated>)>,
+    mut local_cursor: Query<
+        &mut Cursor,
+        (
+            Without<Replicated>,
+            Without<Confirmed>,
+            Without<Interpolated>,
+        ),
+    >,
     camera: Query<(&Camera, &GlobalTransform), With<TopdownCamera>>,
     cursor_pos: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -111,22 +122,31 @@ fn update_local_cursor_position(
     }
 }
 
-fn update_token_position (
+fn update_token_position(
     mut tokens: Query<(&mut Transform, &Token), Or<(With<Replicated>, With<Interpolated>)>>,
     time: Res<Time>,
 ) {
     for (mut transform, token) in tokens.iter_mut() {
-        transform.translation = Vec2::lerp(transform.translation.xy(), token.position, (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32).extend(token.layer);
+        transform.translation = Vec2::lerp(
+            transform.translation.xy(),
+            token.position,
+            (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32,
+        )
+        .extend(token.layer);
     }
 }
-
 
 fn update_replicated_cursor_position(
     mut cursors: Query<(&mut Transform, &Cursor), Or<(With<Replicated>, With<Interpolated>)>>,
     time: Res<Time>,
 ) {
     for (mut transform, cursor) in cursors.iter_mut() {
-        transform.translation = Vec2::lerp(transform.translation.xy(), cursor.position, (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32).extend(50.0);
+        transform.translation = Vec2::lerp(
+            transform.translation.xy(),
+            cursor.position,
+            (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32,
+        )
+        .extend(50.0);
     }
 }
 
@@ -146,8 +166,10 @@ fn init_replicated_cursors(
     let texture = asset_server.load("cursor.png");
 
     for (entity, owner, cursor) in cursors.iter() {
-
-        let color = player_data.get(&owner.0).map(|x| x.color).unwrap_or([255; 3]);
+        let color = player_data
+            .get(&owner.0)
+            .map(|x| x.color)
+            .unwrap_or([255; 3]);
 
         let material = materials.add(StandardMaterial {
             unlit: true,
@@ -181,7 +203,10 @@ fn update_replicated_cursor_color(
     }
 
     for (cursor, owner) in cursors.iter() {
-        let color = player_data.get(&owner.0).map(|x| x.color).unwrap_or([255; 3]);
+        let color = player_data
+            .get(&owner.0)
+            .map(|x| x.color)
+            .unwrap_or([255; 3]);
 
         if let Some(material) = materials.get_mut(cursor) {
             material.base_color = Color::rgb_u8(color[0], color[1], color[2]);

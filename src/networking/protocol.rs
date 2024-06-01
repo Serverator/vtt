@@ -1,5 +1,8 @@
 use crate::prelude::*;
-use bevy::{ecs::entity::MapEntities, utils::{HashMap, HashSet}};
+use bevy::{
+    ecs::entity::MapEntities,
+    utils::{HashMap, HashSet},
+};
 use lightyear::prelude::*;
 
 pub struct ProtocolPlugin;
@@ -22,7 +25,7 @@ impl Plugin for ProtocolPlugin {
         app.register_type::<Replicated>();
         app.register_type::<Owner>();
         app.register_type::<DeselectMessage>()
-           .add_map_entities::<DeselectMessage>();
+            .add_map_entities::<DeselectMessage>();
 
         app.init_resource::<SharedAssets<Mesh>>();
         app.init_resource::<SharedAssets<StandardMaterial>>();
@@ -59,13 +62,15 @@ pub enum SharedAssetId {
 
 #[derive(Resource)]
 pub struct SharedAssets<T: Asset> {
-    pub map: HashMap<SharedAssetId, Handle<T>>
+    pub map: HashMap<SharedAssetId, Handle<T>>,
 }
 
 // Derive macro for some reason refuses to impl Default
 impl<T: Asset> Default for SharedAssets<T> {
     fn default() -> Self {
-        Self { map: HashMap::default() }
+        Self {
+            map: HashMap::default(),
+        }
     }
 }
 
@@ -75,14 +80,9 @@ pub struct SharedMesh {
     pub layer: f32,
 }
 
-pub struct SharedMaterial {
+pub struct SharedMaterial {}
 
-}
-
-pub struct SharedTexture {
-
-}
-
+pub struct SharedTexture {}
 
 #[derive(Debug, Resource, Default, Serialize, Deserialize, Clone, Deref, DerefMut)]
 pub struct PlayerData(pub HashMap<u64, Player>);
@@ -121,7 +121,9 @@ impl MapEntities for DeselectMessage {
 
 impl Linear for Cursor {
     fn lerp(start: &Self, other: &Self, t: f32) -> Self {
-        Cursor { position: (1.0 - t) * start.position + t * other.position }
+        Cursor {
+            position: (1.0 - t) * start.position + t * other.position,
+        }
     }
 }
 

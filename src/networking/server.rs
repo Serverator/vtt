@@ -13,7 +13,7 @@ impl Plugin for ServerPlugin {
         let io = IoConfig {
             transport: ServerTransport::WebTransportServer {
                 server_addr: SERVER_ADDR,
-                certificate: Identity::self_signed(["localhost"]).unwrap()
+                certificate: Identity::self_signed(["localhost"]).unwrap(),
             },
             ..default()
         };
@@ -31,10 +31,11 @@ impl Plugin for ServerPlugin {
         app.add_plugins(ServerPlugins::new(config))
             .init_resource::<PlayerData>()
             .init_resource::<ConnectedClients>()
-			.add_systems(Startup, replicate_resources)
+            .add_systems(Startup, replicate_resources)
             .add_systems(
                 Update,
-                (recieve_message, replicate_cursors, despawn_cursors).run_if(in_state(NetworkingState::Started)),
+                (recieve_message, replicate_cursors, despawn_cursors)
+                    .run_if(in_state(NetworkingState::Started)),
             );
     }
 }
@@ -66,10 +67,7 @@ fn recieve_message(
         clients.insert(connected.client_id.to_bits());
 
         connection
-            .send_message_to_target::<UnorderedReliable, _>(
-                &chat_message,
-                NetworkTarget::All,
-            )
+            .send_message_to_target::<UnorderedReliable, _>(&chat_message, NetworkTarget::All)
             .unwrap();
     }
 
@@ -82,10 +80,7 @@ fn recieve_message(
         let chat_message =
             ChatMessage::Message(message.context.to_bits(), message.message.0.clone());
         connection
-            .send_message_to_target::<UnorderedReliable, _>(
-                &chat_message,
-                NetworkTarget::All,
-            )
+            .send_message_to_target::<UnorderedReliable, _>(&chat_message, NetworkTarget::All)
             .unwrap();
     }
 
@@ -93,10 +88,7 @@ fn recieve_message(
         info!("Player disconnected: {}", disconnected.client_id.to_bits());
         let chat_message = ChatMessage::Disconnected(disconnected.client_id.to_bits());
         connection
-            .send_message_to_target::<UnorderedReliable, _>(
-                &chat_message,
-                NetworkTarget::All,
-            )
+            .send_message_to_target::<UnorderedReliable, _>(&chat_message, NetworkTarget::All)
             .unwrap();
 
         clients.remove(&disconnected.client_id.to_bits());
@@ -108,19 +100,19 @@ fn replicate_cursors(
     cursors: Query<(Entity, &Replicated), (With<Cursor>, Added<Replicated>)>,
 ) {
     for (entity, replicated) in cursors.iter() {
-
         println!("New cursor by {:?} pog", replicated.client_id());
 
         let mut entity = commands.entity(entity);
         let client_id = replicated.client_id();
 
-        entity.insert((server::Replicate {
-            target: ReplicationTarget {
-                target: NetworkTarget::AllExceptSingle(client_id),
+        entity.insert((
+            server::Replicate {
+                target: ReplicationTarget {
+                    target: NetworkTarget::AllExceptSingle(client_id),
+                },
+                ..default()
             },
-            ..default()
-        },
-            Owner(client_id.to_bits())
+            Owner(client_id.to_bits()),
         ));
     }
 }

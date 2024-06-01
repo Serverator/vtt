@@ -181,12 +181,15 @@ impl Command for ConnectCommand {
             let mut client_config = world.resource_mut::<ClientConfig>();
             if let client::NetConfig::Netcode {
                 auth: Authentication::Manual { server_addr, .. },
-                io: client::IoConfig {
-                    transport: ClientTransport::WebTransportClient { 
-                        server_addr: web_server_addr ,
+                io:
+                    client::IoConfig {
+                        transport:
+                            ClientTransport::WebTransportClient {
+                                server_addr: web_server_addr,
+                                ..
+                            },
                         ..
-                    }, ..
-                },
+                    },
                 ..
             } = &mut client_config.net
             {
