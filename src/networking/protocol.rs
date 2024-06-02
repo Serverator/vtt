@@ -1,9 +1,12 @@
+use std::marker::PhantomData;
+
 use crate::prelude::*;
 use bevy::{
-    ecs::entity::MapEntities,
-    utils::{HashMap, HashSet},
+    ecs::entity::MapEntities, reflect::{serde::{ReflectSerializer, TypedReflectDeserializer}, TypeRegistration, TypeRegistry, Typed}, utils::{HashMap, HashSet}
 };
 use lightyear::prelude::*;
+use serde::de::DeserializeSeed;
+use uuid::Uuid;
 
 pub struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
@@ -27,9 +30,9 @@ impl Plugin for ProtocolPlugin {
         app.register_type::<DeselectMessage>()
             .add_map_entities::<DeselectMessage>();
 
-        app.init_resource::<SharedAssets<Mesh>>();
-        app.init_resource::<SharedAssets<StandardMaterial>>();
-        app.init_resource::<SharedAssets<Image>>();
+        app.add_shared_reflect_asset::<Mesh>();
+        app.add_shared_reflect_asset::<StandardMaterial>();
+        app.add_shared_reflect_asset::<Image>();
 
         app.add_channel::<UnorderedReliable>(ChannelSettings {
             mode: ChannelMode::UnorderedReliable(ReliableSettings::default()),
@@ -40,6 +43,30 @@ impl Plugin for ProtocolPlugin {
             mode: ChannelMode::SequencedUnreliable,
             ..default()
         });
+    }
+}
+
+pub trait SharedAssetExt {
+    fn add_shared_asset<T: Asset + Message>(&mut self) -> &mut Self;
+
+    fn add_shared_reflect_asset<T: Asset + Reflect>(&mut self) -> &mut Self;
+}
+
+impl SharedAssetExt for App {
+    fn add_shared_asset<T: Asset + Message>(&mut self) -> &mut Self {
+        self.init_resource::<SharedAssets<T>>();
+        self.add_message::<RequestAssetMessage<T>>(ChannelDirection::Bidirectional);
+        self.add_message::<SendAssetMessage<T>>(ChannelDirection::Bidirectional);
+
+        self
+    }
+
+    fn add_shared_reflect_asset<T: Asset + Reflect>(&mut self) -> &mut Self {
+        self.init_resource::<SharedAssets<T>>();
+        self.add_message::<RequestAssetMessage<T>>(ChannelDirection::Bidirectional);
+        self.add_message::<SendReflectAssetMessage<T>>(ChannelDirection::Bidirectional);
+
+        self
     }
 }
 
@@ -56,13 +83,54 @@ pub struct Token {
 }
 
 pub enum SharedAssetId {
-    Uuid(uuid::Uuid),
+    Uuid(Uuid),
     Name(String),
+}
+
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct RequestAssetMessage<T> {
+    id: Uuid,
+    _spooky: PhantomData<T>,
+}
+
+#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SendAssetMessage<T> {
+    id: Uuid,
+    data: T,
+}
+
+#[derive(Component, Reflect, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SendReflectAssetMessage<T> {
+    id: Uuid,
+    // Pre-encoded by `bincode`
+    data: Vec<u8>,
+    _spooky: PhantomData<T>
+}
+
+impl<T: Reflect + Typed> SendReflectAssetMessage<T> {
+    pub fn new(uuid: Uuid, data: &T, registry: &TypeRegistry) -> Result<Self, bincode::Error> {
+        let serializer = ReflectSerializer::new(data, registry);
+        let bytes = bincode::serialize(&serializer)?;
+
+        Ok(Self {
+            id: uuid,
+            data: bytes,
+            _spooky: PhantomData::default(),
+        })
+    }
+
+    pub fn deserialize(&self, registry: &TypeRegistry) -> Result<T, bincode::Error> {
+         let registration = TypeRegistration::of::<T>();
+         let reflect_deserializer = TypedReflectDeserializer::new(&registration, registry);
+         let mut deserializer = bincode::Deserializer::from_slice(&self.data[..], bincode::config::DefaultOptions::default());
+         let reflect_value = reflect_deserializer.deserialize(&mut deserializer)?;
+         Ok(*reflect_value.downcast::<T>().unwrap())
+    }
 }
 
 #[derive(Resource)]
 pub struct SharedAssets<T: Asset> {
-    pub map: HashMap<SharedAssetId, Handle<T>>,
+    pub map: HashMap<uuid::Uuid, Handle<T>>,
 }
 
 // Derive macro for some reason refuses to impl Default
@@ -73,16 +141,6 @@ impl<T: Asset> Default for SharedAssets<T> {
         }
     }
 }
-
-#[derive(Component, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct SharedMesh {
-    pub position: Vec2,
-    pub layer: f32,
-}
-
-pub struct SharedMaterial {}
-
-pub struct SharedTexture {}
 
 #[derive(Debug, Resource, Default, Serialize, Deserialize, Clone, Deref, DerefMut)]
 pub struct PlayerData(pub HashMap<u64, Player>);
