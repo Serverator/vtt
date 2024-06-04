@@ -2,8 +2,10 @@ use crate::prelude::*;
 
 pub mod client;
 pub mod protocol;
-pub mod server;
 pub mod shared;
+pub mod asset_sharing;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod server;
 
 #[derive(Default)]
 pub struct NetworkingPlugin {
@@ -17,8 +19,11 @@ impl Plugin for NetworkingPlugin {
             client::ClientPlugin {
                 headless: self.headless,
             },
-            server::ServerPlugin,
-            protocol::ProtocolPlugin,
         ));
+        
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_plugins(server::ServerPlugin);
+
+        app.add_plugins(protocol::ProtocolPlugin);
     }
 }

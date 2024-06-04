@@ -36,6 +36,7 @@ fn display_window(
     mut client_config: ResMut<client::ClientConfig>,
     mut player: ResMut<Player>,
     mut commands: Commands,
+    client_id: Option<Res<crate::networking::client::ClientId>>,
     server_state: Res<State<server::NetworkingState>>,
     client_state: Res<State<client::NetworkingState>>,
 ) {
@@ -74,34 +75,42 @@ fn display_window(
             ui.text_edit_singleline(&mut connection_window.address_input);
         });
 
+        let can_connect = client_id.is_some() && !matches!(server_state.get(), server::NetworkingState::Started);
+
         ui.horizontal(|ui| {
             match client_state.get() {
                 client::NetworkingState::Disconnected => {
-                    if ui.button("Connect").clicked() {
-                        let address = if connection_window.address_input.trim().is_empty() {
-                            Some(std::net::SocketAddr::V4(SocketAddrV4::new(
-                                Ipv4Addr::new(127, 0, 0, 1),
-                                DEFAULT_PORT,
-                            )))
-                        } else if connection_window.address_input.contains(':') {
-                            connection_window
-                                .address_input
-                                .trim()
+                    ui.add_enabled_ui(can_connect, |ui| {
+                        if ui.button("Connect").clicked() {
+
+                            let address = if connection_window.address_input.trim().is_empty() {
+                                Some(std::net::SocketAddr::V4(SocketAddrV4::new(
+                                    Ipv4Addr::new(127, 0, 0, 1),
+                                    DEFAULT_PORT,
+                                )))
+                            } else if connection_window.address_input.contains(':') {
+                                connection_window
+                                    .address_input
+                                    .trim()
+                                    .to_socket_addrs()
+                                    .ok()
+                                    .and_then(|mut x| x.find(|x| x.is_ipv4()))
+                            } else {
+                                format!(
+                                    "{}:{}",
+                                    &connection_window.address_input.trim(),
+                                    DEFAULT_PORT
+                                )
                                 .to_socket_addrs()
                                 .ok()
                                 .and_then(|mut x| x.find(|x| x.is_ipv4()))
-                        } else {
-                            format!(
-                                "{}:{}",
-                                &connection_window.address_input.trim(),
-                                DEFAULT_PORT
-                            )
-                            .to_socket_addrs()
-                            .ok()
-                            .and_then(|mut x| x.find(|x| x.is_ipv4()))
-                        };
+                            };
 
-                        if let Some(address) = address {
+                            let Some(address) = address else {
+                                connection_window.error = Cow::Borrowed("Incorrect IP adress");
+                                return;
+                            };
+
                             if let client::NetConfig::Netcode {
                                 auth: Authentication::Manual { server_addr, .. },
                                 io:
@@ -121,14 +130,12 @@ fn display_window(
                             }
 
                             commands.connect_client();
-                        } else {
-                            connection_window.error = Cow::Borrowed("Incorrect IP adress");
                         }
-                    }
-                }
+                    });
+                },
                 client::NetworkingState::Connecting => {
                     ui.add_enabled_ui(false, |ui| ui.button("Connecting"));
-                }
+                },
                 client::NetworkingState::Connected => {
                     if ui.button("Disconnect").clicked() {
                         commands.disconnect_client();

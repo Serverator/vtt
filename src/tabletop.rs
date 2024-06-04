@@ -6,8 +6,7 @@ use picking_core::PickingPluginsSettings;
 use pointer::InputMove;
 
 use crate::{
-    input::{CursorPosition, OverUI},
-    prelude::*,
+    input::{CursorPosition, OverUI}, networking::asset_sharing::SharedAssets, prelude::*
 };
 
 pub struct TabletopPlugin;
@@ -190,6 +189,7 @@ fn zoom_tabletop(
 fn spawn_tokens(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut shared_images: ResMut<SharedAssets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -199,9 +199,11 @@ fn spawn_tokens(
         ..default()
     });
 
-    let token_image = materials.add(StandardMaterial {
+    let (image, image_id) = shared_images.load_shared(&asset_server, "token.png");
+
+    let token_material = materials.add(StandardMaterial {
         unlit: true,
-        base_color_texture: Some(asset_server.load("token.png")),
+        base_color_texture: Some(image),
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
@@ -224,13 +226,14 @@ fn spawn_tokens(
         PbrBundle {
             transform: Transform::from_scale(Vec3::new(0.95, 0.95, 1.0)),
             mesh: quad.clone(),
-            material: token_image,
+            material: token_material,
             ..default()
         },
         Token {
             position: Vec2::new(0.5, 0.5),
             layer: 15.0,
         },
+        SharedAsset::<Image>::new(image_id),
         server::Replicate {
             target: ReplicationTarget {
                 target: NetworkTarget::All,

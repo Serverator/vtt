@@ -58,10 +58,14 @@ fn main() {
 pub mod prelude {
     pub use bevy::prelude::FloatExt;
     pub use bevy::prelude::*;
+    pub use bevy::{reflect::Typed, utils::HashMap};
     pub use bevy_egui::egui;
     pub use bevy_mod_picking::prelude::*;
     pub use serde::{Deserialize, Serialize};
+    pub use uuid::Uuid;
+    pub use std::marker::PhantomData;
 
     pub use crate::networking::protocol::*;
+    pub use crate::networking::asset_sharing::SharedAssetExt;
     pub use crate::networking::shared::DEFAULT_PORT;
 }

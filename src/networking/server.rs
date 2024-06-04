@@ -41,7 +41,7 @@ impl Plugin for ServerPlugin {
 }
 
 fn replicate_resources(mut commands: Commands) {
-    commands.replicate_resource::<PlayerData, UnorderedReliable>(NetworkTarget::All)
+    commands.replicate_resource::<PlayerData, SequencedReliable>(NetworkTarget::All)
 }
 
 fn recieve_message(
@@ -97,13 +97,12 @@ fn recieve_message(
 
 fn replicate_cursors(
     mut commands: Commands,
+    client_id: Option<Res<super::client::ClientId>>,
     cursors: Query<(Entity, &Replicated), (With<Cursor>, Added<Replicated>)>,
 ) {
     for (entity, replicated) in cursors.iter() {
-        println!("New cursor by {:?} pog", replicated.client_id());
-
         let mut entity = commands.entity(entity);
-        let client_id = replicated.client_id();
+        let client_id = replicated.from.unwrap_or(ClientId::Local(client_id.as_ref().unwrap().0));
 
         entity.insert((
             server::Replicate {
@@ -124,6 +123,8 @@ fn despawn_cursors(
 ) {
     for disconnect in disconnected.read() {
         let client_id = disconnect.client_id;
+
+        info!("Despawning entity");
 
         if let Some((cursor, _)) = cursors.iter().find(|x| x.1.client_id() == client_id) {
             commands.entity(cursor).despawn();

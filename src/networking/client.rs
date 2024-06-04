@@ -4,14 +4,16 @@ use crate::{input::CursorPosition, prelude::*, tabletop::TopdownCamera};
 use client::*;
 use lightyear::{connection::netcode::PRIVATE_KEY_BYTES, prelude::*};
 use rand::RngCore;
-
-use super::shared::DEFAULT_PORT;
+use super::{asset_sharing::RequestAssetMessage, shared::DEFAULT_PORT};
 
 pub struct ClientPlugin {
     pub headless: bool,
 }
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+
+        let client_id = rand::thread_rng().next_u64();
+
         let config = ClientConfig {
             net: NetConfig::Netcode {
                 auth: Authentication::Manual {
@@ -19,7 +21,7 @@ impl Plugin for ClientPlugin {
                         Ipv4Addr::new(127, 0, 0, 1),
                         DEFAULT_PORT,
                     )),
-                    client_id: rand::thread_rng().next_u64(),
+                    client_id,
                     private_key: [0; PRIVATE_KEY_BYTES],
                     protocol_id: 0,
                 },
@@ -43,7 +45,7 @@ impl Plugin for ClientPlugin {
         };
 
         app.add_systems(OnEnter(NetworkingState::Connected), send_player_info);
-
+        app.insert_resource(ClientId(client_id));
         //app.add_systems(Startup, connect);
 
         if !self.headless {
@@ -52,6 +54,7 @@ impl Plugin for ClientPlugin {
                 (
                     update_local_cursor_position,
                     init_replicated_cursors,
+                    init_replicated_tokens,
                     update_token_position,
                     update_replicated_cursor_position,
                     update_replicated_cursor_color,
@@ -69,6 +72,9 @@ impl Plugin for ClientPlugin {
         app.add_systems(Update, recieve_message);
     }
 }
+
+#[derive(Resource, Clone, Copy, Deref, DerefMut)]
+pub struct ClientId(pub u64);
 
 fn send_player_info(mut connection: ResMut<ConnectionManager>, player: Res<Player>) {
     _ = connection.send_message::<UnorderedReliable, Player>(&player);
@@ -147,6 +153,42 @@ fn update_replicated_cursor_position(
             (1.0 - 0.000000001f64.powf(time.delta_seconds_f64())) as f32,
         )
         .extend(50.0);
+    }
+}
+
+fn init_replicated_tokens(
+    mut commands: Commands,
+    tokens: Query<(Entity, &Token, &SharedAsset<Image>), Or<(Added<Replicated>, Added<Interpolated>)>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    image_assets: Res<Assets<Image>>,
+    mut connection: ResMut<ConnectionManager>,
+) {
+
+    for (entity, token, shared_image) in tokens.iter() {
+
+        if image_assets.get(shared_image.id).is_none() {
+            _ = connection.send_message::<UnorderedReliable, _>(&RequestAssetMessage::<Image>::new(shared_image.id));
+        }
+
+        let image = Handle::<Image>::weak_from_u128(shared_image.as_u128());
+        let token_material = materials.add(StandardMaterial {
+            unlit: true,
+            base_color_texture: Some(image),
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        });
+        let quad = meshes.add(Mesh::from(Rectangle::new(1.0, 1.0)));
+
+        commands.entity(entity).insert((
+            Name::new("Token"),
+            PbrBundle {
+                transform: Transform::from_scale(token.position.extend(token.layer)),
+                mesh: quad.clone(),
+                material: token_material,
+                ..default()
+            },
+        ));
     }
 }
 

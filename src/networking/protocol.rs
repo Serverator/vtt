@@ -1,12 +1,8 @@
-use std::marker::PhantomData;
-
 use crate::prelude::*;
 use bevy::{
-    ecs::entity::MapEntities, reflect::{serde::{ReflectSerializer, TypedReflectDeserializer}, TypeRegistration, TypeRegistry, Typed}, utils::{HashMap, HashSet}
+    ecs::entity::MapEntities, utils::{HashMap, HashSet}
 };
 use lightyear::prelude::*;
-use serde::de::DeserializeSeed;
-use uuid::Uuid;
 
 pub struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
@@ -30,9 +26,7 @@ impl Plugin for ProtocolPlugin {
         app.register_type::<DeselectMessage>()
             .add_map_entities::<DeselectMessage>();
 
-        app.add_shared_reflect_asset::<Mesh>();
-        app.add_shared_reflect_asset::<StandardMaterial>();
-        app.add_shared_reflect_asset::<Image>();
+        app.add_shared_asset::<Image>();
 
         app.add_channel::<UnorderedReliable>(ChannelSettings {
             mode: ChannelMode::UnorderedReliable(ReliableSettings::default()),
@@ -43,30 +37,11 @@ impl Plugin for ProtocolPlugin {
             mode: ChannelMode::SequencedUnreliable,
             ..default()
         });
-    }
-}
 
-pub trait SharedAssetExt {
-    fn add_shared_asset<T: Asset + Message>(&mut self) -> &mut Self;
-
-    fn add_shared_reflect_asset<T: Asset + Reflect>(&mut self) -> &mut Self;
-}
-
-impl SharedAssetExt for App {
-    fn add_shared_asset<T: Asset + Message>(&mut self) -> &mut Self {
-        self.init_resource::<SharedAssets<T>>();
-        self.add_message::<RequestAssetMessage<T>>(ChannelDirection::Bidirectional);
-        self.add_message::<SendAssetMessage<T>>(ChannelDirection::Bidirectional);
-
-        self
-    }
-
-    fn add_shared_reflect_asset<T: Asset + Reflect>(&mut self) -> &mut Self {
-        self.init_resource::<SharedAssets<T>>();
-        self.add_message::<RequestAssetMessage<T>>(ChannelDirection::Bidirectional);
-        self.add_message::<SendReflectAssetMessage<T>>(ChannelDirection::Bidirectional);
-
-        self
+        app.add_channel::<SequencedReliable>(ChannelSettings {
+            mode: ChannelMode::SequencedReliable(ReliableSettings::default()),
+            ..default()
+        });
     }
 }
 
@@ -76,69 +51,35 @@ pub struct UnorderedReliable;
 #[derive(Channel)]
 pub struct SequencedUnreliable;
 
+#[derive(Channel)]
+pub struct SequencedReliable;
+
 #[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Token {
     pub position: Vec2,
     pub layer: f32,
 }
 
-pub enum SharedAssetId {
-    Uuid(Uuid),
-    Name(String),
-}
-
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct RequestAssetMessage<T> {
-    id: Uuid,
+#[derive(Component, Reflect, Debug, Clone, Serialize, Deserialize, Deref, DerefMut)]
+pub struct SharedAsset<T> {
+    #[deref]
+    pub id: Uuid,
+    #[reflect(ignore)]
     _spooky: PhantomData<T>,
 }
 
-#[derive(Component, Reflect, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct SendAssetMessage<T> {
-    id: Uuid,
-    data: T,
-}
-
-#[derive(Component, Reflect, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SendReflectAssetMessage<T> {
-    id: Uuid,
-    // Pre-encoded by `bincode`
-    data: Vec<u8>,
-    _spooky: PhantomData<T>
-}
-
-impl<T: Reflect + Typed> SendReflectAssetMessage<T> {
-    pub fn new(uuid: Uuid, data: &T, registry: &TypeRegistry) -> Result<Self, bincode::Error> {
-        let serializer = ReflectSerializer::new(data, registry);
-        let bytes = bincode::serialize(&serializer)?;
-
-        Ok(Self {
-            id: uuid,
-            data: bytes,
-            _spooky: PhantomData::default(),
-        })
-    }
-
-    pub fn deserialize(&self, registry: &TypeRegistry) -> Result<T, bincode::Error> {
-         let registration = TypeRegistration::of::<T>();
-         let reflect_deserializer = TypedReflectDeserializer::new(&registration, registry);
-         let mut deserializer = bincode::Deserializer::from_slice(&self.data[..], bincode::config::DefaultOptions::default());
-         let reflect_value = reflect_deserializer.deserialize(&mut deserializer)?;
-         Ok(*reflect_value.downcast::<T>().unwrap())
-    }
-}
-
-#[derive(Resource)]
-pub struct SharedAssets<T: Asset> {
-    pub map: HashMap<uuid::Uuid, Handle<T>>,
-}
-
-// Derive macro for some reason refuses to impl Default
-impl<T: Asset> Default for SharedAssets<T> {
-    fn default() -> Self {
+impl<T> SharedAsset<T> {
+    pub fn new(uuid: Uuid) -> Self {
         Self {
-            map: HashMap::default(),
+            id: uuid,
+            _spooky: PhantomData,
         }
+    }
+}
+
+impl<T> PartialEq for SharedAsset<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 
