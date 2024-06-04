@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use bevy::{asset::AssetPath, render::{render_asset::RenderAssetUsages, render_resource::{Extent3d, TextureDimension, TextureFormat}}};
+use bevy::{asset::AssetPath, render::{render_asset::RenderAssetUsages, render_resource::{Extent3d, TextureDimension, TextureFormat}, texture::{TextureFormatPixelInfo, Volume}}};
 use lightyear::prelude::*;
 
 pub trait SharedAssetExt {
@@ -43,10 +43,10 @@ pub enum SharableFormat {
 impl SharableImage {
     pub fn from_image(image: &Image) -> Option<Self> {
         let format = SharableFormat::from_bevy_format(image.texture_descriptor.format)?;
-        let data = image.data.clone();
+        // If contains mipmap we will cut them off. Snip snip
+        let data_len = image.texture_descriptor.size.volume() * image.texture_descriptor.format.pixel_size();
+        let data = image.data[..data_len].to_vec();
         let size = image.size();
-
-        info!("Size: {size:?} | Length: {} | Format: {:?}", data.len(), format);
         
         Some(SharableImage {
             data,
@@ -61,8 +61,6 @@ impl SharableImage {
             height: self.size.y,
             ..default()
         };
-
-        info!("Size: {size:?} | Length: {} | Format: {:?}", self.data.len(), self.format);
 
         Image::new(size, TextureDimension::D2, self.data.clone(), self.format.to_bevy_format(), RenderAssetUsages::RENDER_WORLD)
     }
