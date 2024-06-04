@@ -15,6 +15,7 @@ impl Plugin for ServerPlugin {
                 server_addr: SERVER_ADDR,
                 certificate: Identity::self_signed(["localhost"]).unwrap(),
             },
+            compression: CompressionConfig::Zstd { level: 3 },
             ..default()
         };
 

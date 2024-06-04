@@ -37,6 +37,7 @@ impl Plugin for ClientPlugin {
                             DEFAULT_PORT,
                         )),
                     },
+                    compression: CompressionConfig::Zstd { level: 3 },
                     ..default()
                 },
             },

@@ -25,7 +25,7 @@ bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipm
 bevy_mod_picking = "0.18.2"
 bincode = "1.3.3"
 image =  { version = "0.24.9", default-features = false }
-lightyear = { git = "https://github.com/cBournhonesque/lightyear.git", features = ["webtransport"] }
+lightyear = { git = "https://github.com/cBournhonesque/lightyear.git", features = ["webtransport", "zstd"] }
 rand = "0.8.5"
 serde = "1.0.203"
 uuid = "1.8.0"
