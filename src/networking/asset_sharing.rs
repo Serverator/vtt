@@ -11,6 +11,7 @@ impl SharedAssetExt for App {
         self.register_component::<SharedAsset<T>>(ChannelDirection::ServerToClient);
         self.register_type::<SharedAsset<T>>();
 
+        self.init_resource::<Assets<T>>();
         self.init_resource::<SharedAssets<T>>();
 
         self.add_message::<RequestAssetMessage<T>>(ChannelDirection::ClientToServer);
@@ -30,7 +31,7 @@ pub struct SharableImage {
     pub format: SharableFormat,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum SharableFormat {
    R8Unorm,
    Rg8Unorm,
@@ -44,6 +45,8 @@ impl SharableImage {
         let format = SharableFormat::from_bevy_format(image.texture_descriptor.format)?;
         let data = image.data.clone();
         let size = image.size();
+
+        info!("Size: {size:?} | Length: {} | Format: {:?}", data.len(), format);
         
         Some(SharableImage {
             data,
@@ -59,17 +62,9 @@ impl SharableImage {
             ..default()
         };
 
+        info!("Size: {size:?} | Length: {} | Format: {:?}", self.data.len(), self.format);
+
         Image::new(size, TextureDimension::D2, self.data.clone(), self.format.to_bevy_format(), RenderAssetUsages::RENDER_WORLD)
-    }
-
-    pub fn into_image(self) -> Image {
-        let size = Extent3d {
-            width: self.size.x,
-            height: self.size.y,
-            ..default()
-        };
-
-        Image::new(size, TextureDimension::D2, self.data, self.format.to_bevy_format(), RenderAssetUsages::RENDER_WORLD)
     }
 }
 

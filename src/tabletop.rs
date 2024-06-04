@@ -12,31 +12,33 @@ use crate::{
 pub struct TabletopPlugin;
 impl Plugin for TabletopPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Msaa::Sample4)
-            .register_type::<Moving>()
-            .add_systems(
-                OnEnter(lightyear::prelude::server::NetworkingState::Started),
-                spawn_tokens.run_if(run_once()),
-            )
-            .add_systems(
-                PreUpdate,
-                (
-                    drop_moving_tokens.after(MainSet::EmitEvents),
-                    update_picking.after(crate::input::update_over_ui),
-                ),
-            )
-            .add_systems(
-                Update,
-                (
-                    (init_move_tokens, move_tokens).chain(),
-                    move_tabletop,
-                    zoom_tabletop,
-                ),
-            );
-
-        if !std::env::args().any(|arg| arg == "--headless") {
-            app.add_systems(Startup, spawn_tabletop);
+        let is_headless = std::env::args().any(|arg| arg == "--headless");
+        
+        if !is_headless {
+            app.insert_resource(Msaa::Sample4)
+                .register_type::<Moving>()
+                .add_systems(
+                    OnEnter(lightyear::prelude::server::NetworkingState::Started),
+                    spawn_tokens.run_if(run_once()),
+                )
+                .add_systems(
+                    PreUpdate,
+                    (
+                        drop_moving_tokens.after(MainSet::EmitEvents),
+                        update_picking.after(crate::input::update_over_ui),
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    (
+                        (init_move_tokens, move_tokens).chain(),
+                        move_tabletop,
+                        zoom_tabletop,
+                    ),
+                );
         }
+        
+        app.add_systems(Startup, spawn_tabletop);
     }
 }
 
